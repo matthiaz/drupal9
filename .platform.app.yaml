@@ -12,6 +12,8 @@ type: 'php:7.4'
 dependencies:
     php:
         composer/composer: '^2'
+    python3:
+       pipenv: '*'
 
 runtime:
     # Enable the redis extension so Drupal can communicate with the Redis cache.
@@ -72,6 +74,8 @@ hooks:
     # No services are available but the disk is writeable.
     build: |
         set -e
+        pip3 install git+git://github.com/matthiaz/template-builder.git@mr/matthias/building-on-top-of-ludo-work#egg=template-builder
+        auto-update drupal9 install_cli
     # The deploy hook runs after your application has been deployed and started.
     # Code cannot be modified at this point but the database is available.
     # The site is not accepting requests while this script runs so keep it
@@ -83,6 +87,17 @@ hooks:
         drush -y cache-rebuild
         drush -y updatedb
         drush -y config-import
+
+# Auto-update source operation
+source:
+  operations:
+    platform_update_dependencies:
+      command: |
+        pip3 install git+git://github.com/matthiaz/template-builder.git@mr/matthias/building-on-top-of-ludo-work#egg=template-builder
+        auto-update drupal9 update
+        date > last_updated_on
+        git add .
+        git commit -m "auto-update" --allow-empty
 
 # The configuration of app when it is exposed to the web.
 web:
@@ -111,7 +126,7 @@ web:
             # Rules for specific URI patterns.
             rules:
                 # Allow access to common static files.
-                '\.(jpe?g|png|gif|svgz?|css|js|map|ico|bmp|eot|woff2?|otf|ttf)$':
+                '(?i)\.(jpe?g|png|gif|svgz?|css|js|map|ico|bmp|eot|woff2?|otf|ttf)$':
                     allow: true
                 '^/robots\.txt$':
                     allow: true
@@ -140,8 +155,19 @@ web:
                 '^/sites/default/files/(css|js)':
                     expires: 2w
 
+
+timezone: "Europe/Paris" # Change this to your timezone https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+
 crons:
     # Run Drupal's cron tasks every 19 minutes.
     drupal:
         spec: '*/19 * * * *'
         cmd: 'cd web ; drush core-cron'
+
+
+    update:
+        spec: '* 3 * * *' # run every night
+        cmd: |
+            if [ $PLATFORM_ENVIRONMENT_TYPE = production ]; then
+                auto-update drupal9 trigger_update_dependencies;
+            fi;
