@@ -63,11 +63,6 @@ mounts:
         source: local
         source_path: 'console'
 
-# Configuration of the build of this application.
-build:
-    # Automatically run `composer install` on every build.
-    flavor: composer
-
 # The hooks executed at various points in the lifecycle of the application.
 hooks:
     # The build hook runs after Composer to finish preparing up your code.
@@ -85,7 +80,7 @@ hooks:
         php ./drush/platformsh_generate_drush_yml.php
         cd web
         drush -y cache-rebuild
-        drush -y updatedb
+        drush -y -vvv updatedb
         drush -y config-import
 
 # Auto-update source operation
